@@ -1,17 +1,7 @@
 {% extends "base.html" %}
 
-{% block title %}{{ title }}{% endblock %}
+{% block title %}Fit with Git{% endblock %}
 
 {% block content %}
-<h1>{{ title }}</h1>
-<p>A full-stack Rust app powered by Axum + htmx.</p>
-
 {% include "components/activity_graph.html" %}
-
-<div style="margin-top: 2rem;">
-    <button hx-get="/greeting" hx-target="#greeting" hx-swap="innerHTML">
-        Say Hello
-    </button>
-    <div id="greeting"></div>
-</div>
 {% endblock %}
