@@ -104,6 +104,10 @@
     .activity-graph-cell[data-level="2"] { background-color: var(--ag-level-2); }
     .activity-graph-cell[data-level="3"] { background-color: var(--ag-level-3); }
     .activity-graph-cell[data-level="4"] { background-color: var(--ag-level-4); }
+    .activity-graph-cell.is-today {
+        outline: 2px solid var(--ag-hover);
+        outline-offset: -1px;
+    }
     .activity-graph-cell-empty {
         width: 11px;
         height: 11px;
@@ -163,7 +167,7 @@
             {% for cell_opt in week.cells %}
                 {% match cell_opt %}
                     {% when Some with (cell) %}
-                    <div class="activity-graph-cell"
+                    <div class="activity-graph-cell{% if cell.is_today %} is-today{% endif %}"
                          data-level="{{ cell.level }}"
                          data-date="{{ cell.date_str }}"
                          title="{{ cell.count }} exercise{% if cell.count != 1 %}s{% endif %} on {{ cell.date_label }}">
