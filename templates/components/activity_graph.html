@@ -1,0 +1,160 @@
+<div class="activity-graph-wrapper">
+<style>
+    .activity-graph-wrapper {
+        background: #0d1117;
+        border: 1px solid #30363d;
+        border-radius: 6px;
+        padding: 16px;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+        color: #7d8590;
+        font-size: 12px;
+        overflow-x: auto;
+    }
+    .activity-graph-header {
+        margin-bottom: 8px;
+        font-size: 14px;
+        color: #e6edf3;
+    }
+    .activity-graph-container {
+        display: inline-grid;
+        position: relative;
+        padding-top: 20px;
+        padding-left: 36px;
+    }
+    .activity-graph-months {
+        position: absolute;
+        top: 0;
+        left: 36px;
+        height: 20px;
+        display: flex;
+        align-items: flex-end;
+        pointer-events: none;
+    }
+    .activity-graph-month {
+        position: absolute;
+        font-size: 12px;
+        color: #7d8590;
+        white-space: nowrap;
+    }
+    .activity-graph-days {
+        position: absolute;
+        left: 0;
+        top: 20px;
+        display: grid;
+        grid-template-rows: repeat(7, 11px);
+        gap: 3px;
+        align-items: center;
+    }
+    .activity-graph-day-label {
+        font-size: 11px;
+        color: #7d8590;
+        height: 11px;
+        line-height: 11px;
+        text-align: right;
+        padding-right: 8px;
+    }
+    .activity-graph-grid {
+        display: grid;
+        grid-template-rows: repeat(7, 11px);
+        grid-auto-flow: column;
+        grid-auto-columns: 11px;
+        gap: 3px;
+    }
+    .activity-graph-cell {
+        width: 11px;
+        height: 11px;
+        border-radius: 2px;
+    }
+    .activity-graph-cell:hover {
+        outline: 2px solid #539bf5;
+        outline-offset: -1px;
+    }
+    .activity-graph-cell[data-level="0"] { background-color: #161b22; }
+    .activity-graph-cell[data-level="1"] { background-color: #0e4429; }
+    .activity-graph-cell[data-level="2"] { background-color: #006d32; }
+    .activity-graph-cell[data-level="3"] { background-color: #26a641; }
+    .activity-graph-cell[data-level="4"] { background-color: #39d353; }
+    .activity-graph-cell-empty {
+        width: 11px;
+        height: 11px;
+    }
+    .activity-graph-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 8px;
+        font-size: 12px;
+        color: #7d8590;
+    }
+    .activity-graph-footer a {
+        color: #7d8590;
+        text-decoration: none;
+    }
+    .activity-graph-footer a:hover {
+        color: #539bf5;
+        text-decoration: underline;
+    }
+    .activity-graph-legend {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+    .activity-graph-legend-cell {
+        width: 11px;
+        height: 11px;
+        border-radius: 2px;
+    }
+</style>
+
+<div class="activity-graph-header">
+    {{ total_exercises }} exercises in the last year
+</div>
+
+<div class="activity-graph-container">
+    <div class="activity-graph-months">
+        {% for label in month_labels %}
+        <span class="activity-graph-month" style="left: {{ label.col_start * 14 }}px;">{{ label.name }}</span>
+        {% endfor %}
+    </div>
+
+    <div class="activity-graph-days">
+        <span class="activity-graph-day-label"></span>
+        <span class="activity-graph-day-label">Mon</span>
+        <span class="activity-graph-day-label"></span>
+        <span class="activity-graph-day-label">Wed</span>
+        <span class="activity-graph-day-label"></span>
+        <span class="activity-graph-day-label">Fri</span>
+        <span class="activity-graph-day-label"></span>
+    </div>
+
+    <div class="activity-graph-grid">
+        {% for week in weeks %}
+            {% for cell_opt in week.cells %}
+                {% match cell_opt %}
+                    {% when Some with (cell) %}
+                    <div class="activity-graph-cell"
+                         data-level="{{ cell.level }}"
+                         data-date="{{ cell.date_str }}"
+                         title="{{ cell.count }} exercise{% if cell.count != 1 %}s{% endif %} on {{ cell.date_label }}">
+                    </div>
+                    {% when None %}
+                    <div class="activity-graph-cell-empty"></div>
+                {% endmatch %}
+            {% endfor %}
+        {% endfor %}
+    </div>
+</div>
+
+<div class="activity-graph-footer">
+    <a href="#">Learn how we count exercises</a>
+    <div class="activity-graph-legend">
+        <span>Less</span>
+        <div class="activity-graph-legend-cell" style="background-color: #161b22;"></div>
+        <div class="activity-graph-legend-cell" style="background-color: #0e4429;"></div>
+        <div class="activity-graph-legend-cell" style="background-color: #006d32;"></div>
+        <div class="activity-graph-legend-cell" style="background-color: #26a641;"></div>
+        <div class="activity-graph-legend-cell" style="background-color: #39d353;"></div>
+        <span>More</span>
+    </div>
+</div>
+</div>
