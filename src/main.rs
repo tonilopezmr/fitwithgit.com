@@ -2,7 +2,8 @@ use askama::Template;
 use askama_web::WebTemplate;
 use axum::{Router, routing::get};
 use chrono::{Datelike, Duration, NaiveDate};
-use rand::Rng;
+use rand::rngs::StdRng;
+use rand::{Rng, SeedableRng};
 use tower_http::services::ServeDir;
 
 // --- Data model ---
@@ -17,6 +18,7 @@ pub struct GraphCell {
     pub count: u32,
     pub level: u8,
     pub date_label: String,
+    pub is_today: bool,
 }
 
 pub struct GraphWeek {
@@ -31,7 +33,8 @@ pub struct MonthLabel {
 // --- Mock data generation ---
 
 fn generate_mock_data(end_date: NaiveDate) -> Vec<ExerciseDay> {
-    let mut rng = rand::thread_rng();
+    let seed = end_date.year() as u64 * 1000 + end_date.ordinal() as u64;
+    let mut rng = StdRng::seed_from_u64(seed);
     let start_date = end_date - Duration::days(364);
     let mut data = Vec::new();
     let mut current = start_date;
@@ -86,7 +89,7 @@ fn month_short_name(month: u32) -> &'static str {
     }
 }
 
-fn build_graph(data: &[ExerciseDay]) -> (Vec<GraphWeek>, Vec<MonthLabel>, u32) {
+fn build_graph(data: &[ExerciseDay], today: NaiveDate) -> (Vec<GraphWeek>, Vec<MonthLabel>, u32) {
     let max_count = data.iter().map(|d| d.count).max().unwrap_or(0);
     let total_exercises: u32 = data.iter().map(|d| d.count).sum();
 
@@ -127,6 +130,7 @@ fn build_graph(data: &[ExerciseDay]) -> (Vec<GraphWeek>, Vec<MonthLabel>, u32) {
             count: day.count,
             level,
             date_label,
+            is_today: day.date == today,
         });
     }
 
@@ -163,7 +167,7 @@ struct ActivityGraphTemplate {
 async fn index() -> IndexTemplate {
     let today = chrono::Local::now().date_naive();
     let data = generate_mock_data(today);
-    let (weeks, month_labels, total_exercises) = build_graph(&data);
+    let (weeks, month_labels, total_exercises) = build_graph(&data, today);
     IndexTemplate {
         weeks,
         month_labels,
@@ -174,7 +178,7 @@ async fn index() -> IndexTemplate {
 async fn activity() -> ActivityGraphTemplate {
     let today = chrono::Local::now().date_naive();
     let data = generate_mock_data(today);
-    let (weeks, month_labels, total_exercises) = build_graph(&data);
+    let (weeks, month_labels, total_exercises) = build_graph(&data, today);
     ActivityGraphTemplate {
         weeks,
         month_labels,
