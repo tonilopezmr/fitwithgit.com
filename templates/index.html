@@ -6,9 +6,12 @@
 <h1>{{ title }}</h1>
 <p>A full-stack Rust app powered by Axum + htmx.</p>
 
-<button hx-get="/greeting" hx-target="#greeting" hx-swap="innerHTML">
-    Say Hello
-</button>
+{% include "components/activity_graph.html" %}
 
-<div id="greeting"></div>
+<div style="margin-top: 2rem;">
+    <button hx-get="/greeting" hx-target="#greeting" hx-swap="innerHTML">
+        Say Hello
+    </button>
+    <div id="greeting"></div>
+</div>
 {% endblock %}
