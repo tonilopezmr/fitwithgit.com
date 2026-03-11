@@ -1,7 +1,6 @@
 use askama::Template;
 use askama_web::WebTemplate;
 use axum::{Router, routing::get};
-use axum_htmx::HxRequest;
 use chrono::{Datelike, Duration, NaiveDate};
 use rand::Rng;
 use tower_http::services::ServeDir;
@@ -146,7 +145,6 @@ fn build_graph(data: &[ExerciseDay]) -> (Vec<GraphWeek>, Vec<MonthLabel>, u32) {
 #[derive(Template, WebTemplate)]
 #[template(path = "index.html")]
 struct IndexTemplate {
-    title: String,
     weeks: Vec<GraphWeek>,
     month_labels: Vec<MonthLabel>,
     total_exercises: u32,
@@ -160,12 +158,6 @@ struct ActivityGraphTemplate {
     total_exercises: u32,
 }
 
-#[derive(Template, WebTemplate)]
-#[template(path = "components/greeting.html")]
-struct GreetingTemplate {
-    message: String,
-}
-
 // --- Handlers ---
 
 async fn index() -> IndexTemplate {
@@ -173,7 +165,6 @@ async fn index() -> IndexTemplate {
     let data = generate_mock_data(today);
     let (weeks, month_labels, total_exercises) = build_graph(&data);
     IndexTemplate {
-        title: "Tirana - Fit with Git".to_string(),
         weeks,
         month_labels,
         total_exercises,
@@ -191,15 +182,6 @@ async fn activity() -> ActivityGraphTemplate {
     }
 }
 
-async fn greeting(HxRequest(is_htmx): HxRequest) -> GreetingTemplate {
-    let message = if is_htmx {
-        "Hello from the server via htmx!".to_string()
-    } else {
-        "Hello, World! (direct request)".to_string()
-    };
-    GreetingTemplate { message }
-}
-
 #[tokio::main]
 async fn main() {
     tracing_subscriber::fmt::init();
@@ -207,7 +189,6 @@ async fn main() {
     let app = Router::new()
         .route("/", get(index))
         .route("/activity", get(activity))
-        .route("/greeting", get(greeting))
         .nest_service("/static", ServeDir::new("static"));
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000")
