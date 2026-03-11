@@ -152,16 +152,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "axum-htmx"
-version = "0.8.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a2d4a162b7621482903309c0e8a990a866728b6312350147181230f840252314"
-dependencies = [
- "axum-core",
- "http",
-]
-
-[[package]]
 name = "basic-toml"
 version = "0.1.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -791,7 +781,6 @@ dependencies = [
  "askama",
  "askama_web",
  "axum",
- "axum-htmx",
  "chrono",
  "rand",
  "tokio",
