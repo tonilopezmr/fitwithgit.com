@@ -241,6 +241,7 @@
     </div>
 </div>
 </div>
+{% if is_htmx %}
 <button id="mode-toggle" class="theme-toggle"
         hx-get="/activity?mode={% if mode == "rolling" %}year{% else %}rolling{% endif %}"
         hx-target=".activity-graph-wrapper"
@@ -248,3 +249,4 @@
         hx-swap-oob="true">
     {% if mode == "rolling" %}Last 365 days{% else %}This year{% endif %}
 </button>
+{% endif %}
