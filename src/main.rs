@@ -172,7 +172,7 @@ fn build_activity(mode: &str) -> (Vec<GraphWeek>, Vec<MonthLabel>, String, Strin
         }
     };
 
-    let all_days = data::load_exercise_days(Path::new("data/fit.log"));
+    let all_days = data::load_exercise_days(Path::new("fit.log"));
     let data: Vec<ExerciseDay> = all_days
         .into_iter()
         .filter(|d| d.date >= start_date && d.date <= today.min(graph_end))

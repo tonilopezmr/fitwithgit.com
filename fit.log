@@ -1,7 +1,5 @@
 # fit.log - Fit with Git activity data
-# Format: <code>,<YYMMDD>,<fields...>
-# S=Steps(total,goal) R=Run(min,km,pace) W=Swim(min,m,laps)
-# B=Bike(min,km,speed) G=Gym(sessions) X=Stretch K=Ski(min,runs) H=Hike(min,km,elev)
+# See FIT_LOG_SPEC.md for format documentation
 S,250601,7200,6000
 X,250601
 S,250602,8100,6000
