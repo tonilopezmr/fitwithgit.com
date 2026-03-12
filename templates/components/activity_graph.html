@@ -179,11 +179,42 @@
         border-radius: 2px;
         transition: background-color 0.2s;
     }
+    .ag-filters {
+        display: flex;
+        gap: 4px;
+        flex-wrap: wrap;
+    }
+    .ag-filter-btn {
+        background: none;
+        border: 1px solid var(--ag-border);
+        border-radius: 12px;
+        padding: 2px 8px;
+        font-size: 14px;
+        line-height: 1.2;
+        cursor: pointer;
+        transition: background 0.15s, border-color 0.15s;
+        color: var(--ag-text);
+    }
+    .ag-filter-btn:hover {
+        border-color: var(--ag-hover);
+    }
+    .ag-filter-btn.active {
+        background: var(--ag-level-1);
+        border-color: var(--ag-level-3);
+    }
 </style>
 
 <div class="activity-graph-top">
     <div class="activity-graph-header">
         {{ header_text }}
+    </div>
+    <div class="ag-filters">
+        {% for a in activities %}
+        <button class="ag-filter-btn{% if a.active %} active{% endif %}"
+                hx-get="/activity?mode={{ mode }}&activity={% if a.active %}{% else %}{{ a.code }}{% endif %}"
+                hx-target=".activity-graph-wrapper"
+                hx-swap="outerHTML">{{ a.emoji }} {{ a.name }}</button>
+        {% endfor %}
     </div>
 </div>
 
@@ -244,7 +275,7 @@
 </div>
 {% if is_htmx %}
 <button id="mode-toggle" class="theme-toggle"
-        hx-get="/activity?mode={% if mode == "rolling" %}year{% else %}rolling{% endif %}"
+        hx-get="/activity?mode={% if mode == "rolling" %}year{% else %}rolling{% endif %}{% if activity_filter != "" %}&activity={{ activity_filter }}{% endif %}"
         hx-target=".activity-graph-wrapper"
         hx-swap="outerHTML"
         hx-swap-oob="true">

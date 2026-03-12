@@ -32,6 +32,42 @@ pub struct MonthLabel {
 #[derive(Deserialize)]
 struct ActivityQuery {
     mode: Option<String>,
+    activity: Option<String>,
+}
+
+pub struct ActivityInfo {
+    pub code: String,
+    pub emoji: String,
+    pub name: String,
+    pub active: bool,
+}
+
+fn activity_emoji(code: &str) -> &'static str {
+    match code {
+        "S" => "\u{1F45F}",
+        "R" => "\u{1F3C3}",
+        "W" => "\u{1F3CA}",
+        "B" => "\u{1F6B4}",
+        "G" => "\u{1F3CB}\u{FE0F}",
+        "X" => "\u{1F9D8}",
+        "K" => "\u{26F7}\u{FE0F}",
+        "H" => "\u{1F97E}",
+        _ => "",
+    }
+}
+
+fn activity_name(code: &str) -> &'static str {
+    match code {
+        "S" => "Steps",
+        "R" => "Run",
+        "W" => "Swim",
+        "B" => "Bike",
+        "G" => "Gym",
+        "X" => "Stretch",
+        "K" => "Ski",
+        "H" => "Hike",
+        _ => "",
+    }
 }
 
 // --- Graph computation ---
@@ -146,9 +182,19 @@ fn build_graph(
     (weeks, month_labels, total_exercises)
 }
 
-fn build_activity(mode: &str) -> (Vec<GraphWeek>, Vec<MonthLabel>, String, String) {
+struct BuildResult {
+    weeks: Vec<GraphWeek>,
+    month_labels: Vec<MonthLabel>,
+    header_text: String,
+    mode: String,
+    activity_filter: String,
+    activities: Vec<ActivityInfo>,
+}
+
+fn build_activity(mode: &str, activity_filter: Option<&str>) -> BuildResult {
     let today = chrono::Local::now().date_naive();
     let year = today.year();
+    let path = Path::new("fit.log");
 
     let (start_date, graph_end, header_text) = match mode {
         "year" => {
@@ -166,7 +212,10 @@ fn build_activity(mode: &str) -> (Vec<GraphWeek>, Vec<MonthLabel>, String, Strin
         }
     };
 
-    let all_days = data::load_exercise_days(Path::new("fit.log"));
+    let available = data::get_available_activities(path);
+    let filter = activity_filter.filter(|f| available.contains(&f.to_string()));
+
+    let all_days = data::load_exercise_days(path, filter);
     let data: Vec<ExerciseDay> = all_days
         .into_iter()
         .filter(|d| d.date >= start_date && d.date <= today.min(graph_end))
@@ -174,7 +223,31 @@ fn build_activity(mode: &str) -> (Vec<GraphWeek>, Vec<MonthLabel>, String, Strin
     let (weeks, month_labels, total_exercises) = build_graph(&data, today, start_date, graph_end);
 
     let header = header_text.replace("{total}", &total_exercises.to_string());
-    (weeks, month_labels, header, mode.to_string())
+    let activities: Vec<ActivityInfo> = available
+        .iter()
+        .map(|code| {
+            let name = activity_name(code);
+            ActivityInfo {
+                emoji: activity_emoji(code).to_string(),
+                name: if name.is_empty() {
+                    code.clone()
+                } else {
+                    name.to_string()
+                },
+                active: filter == Some(code.as_str()),
+                code: code.clone(),
+            }
+        })
+        .collect();
+
+    BuildResult {
+        weeks,
+        month_labels,
+        header_text: header,
+        mode: mode.to_string(),
+        activity_filter: filter.unwrap_or("").to_string(),
+        activities,
+    }
 }
 
 // --- Templates ---
@@ -187,6 +260,8 @@ struct IndexTemplate {
     header_text: String,
     mode: String,
     is_htmx: bool,
+    activity_filter: String,
+    activities: Vec<ActivityInfo>,
 }
 
 #[derive(Template, WebTemplate)]
@@ -197,31 +272,37 @@ struct ActivityGraphTemplate {
     header_text: String,
     mode: String,
     is_htmx: bool,
+    activity_filter: String,
+    activities: Vec<ActivityInfo>,
 }
 
 // --- Handlers ---
 
 async fn index(query: Query<ActivityQuery>) -> IndexTemplate {
     let mode = query.mode.as_deref().unwrap_or("rolling");
-    let (weeks, month_labels, header_text, mode) = build_activity(mode);
+    let r = build_activity(mode, query.activity.as_deref());
     IndexTemplate {
-        weeks,
-        month_labels,
-        header_text,
-        mode,
+        weeks: r.weeks,
+        month_labels: r.month_labels,
+        header_text: r.header_text,
+        mode: r.mode,
         is_htmx: false,
+        activity_filter: r.activity_filter,
+        activities: r.activities,
     }
 }
 
 async fn activity(query: Query<ActivityQuery>) -> ActivityGraphTemplate {
     let mode = query.mode.as_deref().unwrap_or("rolling");
-    let (weeks, month_labels, header_text, mode) = build_activity(mode);
+    let r = build_activity(mode, query.activity.as_deref());
     ActivityGraphTemplate {
-        weeks,
-        month_labels,
-        header_text,
-        mode,
+        weeks: r.weeks,
+        month_labels: r.month_labels,
+        header_text: r.header_text,
+        mode: r.mode,
         is_htmx: true,
+        activity_filter: r.activity_filter,
+        activities: r.activities,
     }
 }
 
