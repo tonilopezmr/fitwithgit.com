@@ -73,6 +73,7 @@ fn month_short_name(month: u32) -> &'static str {
 fn build_graph(
     data: &[ExerciseDay],
     today: NaiveDate,
+    graph_start: NaiveDate,
     graph_end: NaiveDate,
 ) -> (Vec<GraphWeek>, Vec<MonthLabel>, u32) {
     let max_count = data.iter().map(|d| d.count).max().unwrap_or(0);
@@ -83,13 +84,6 @@ fn build_graph(
     for day in data {
         day_map.insert(day.date, day.count);
     }
-
-    // Walk from start of data to graph_end
-    let graph_start = if data.is_empty() {
-        graph_end
-    } else {
-        data[0].date
-    };
 
     let mut weeks: Vec<GraphWeek> = Vec::new();
     let mut current_week: Vec<Option<GraphCell>> = vec![None, None, None, None, None, None, None];
@@ -177,7 +171,7 @@ fn build_activity(mode: &str) -> (Vec<GraphWeek>, Vec<MonthLabel>, String, Strin
         .into_iter()
         .filter(|d| d.date >= start_date && d.date <= today.min(graph_end))
         .collect();
-    let (weeks, month_labels, total_exercises) = build_graph(&data, today, graph_end);
+    let (weeks, month_labels, total_exercises) = build_graph(&data, today, start_date, graph_end);
 
     let header = header_text.replace("{total}", &total_exercises.to_string());
     (weeks, month_labels, header, mode.to_string())
