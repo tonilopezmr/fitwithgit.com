@@ -1,18 +1,16 @@
+mod data;
+
 use askama::Template;
 use askama_web::WebTemplate;
 use axum::{Router, extract::Query, routing::get};
 use chrono::{Datelike, Duration, NaiveDate};
-use rand::rngs::StdRng;
-use rand::{Rng, SeedableRng};
 use serde::Deserialize;
+use std::path::Path;
 use tower_http::services::ServeDir;
 
 // --- Data model ---
 
-struct ExerciseDay {
-    date: NaiveDate,
-    count: u32,
-}
+use data::ExerciseDay;
 
 pub struct GraphCell {
     pub date_str: String,
@@ -34,28 +32,6 @@ pub struct MonthLabel {
 #[derive(Deserialize)]
 struct ActivityQuery {
     mode: Option<String>,
-}
-
-// --- Mock data generation ---
-
-fn generate_mock_data(start_date: NaiveDate, end_date: NaiveDate) -> Vec<ExerciseDay> {
-    let seed = end_date.year() as u64 * 1000 + start_date.ordinal() as u64;
-    let mut rng = StdRng::seed_from_u64(seed);
-    let mut data = Vec::new();
-    let mut current = start_date;
-    while current <= end_date {
-        let count = if rng.gen_bool(0.3) {
-            0
-        } else {
-            rng.gen_range(1..=8)
-        };
-        data.push(ExerciseDay {
-            date: current,
-            count,
-        });
-        current += Duration::days(1);
-    }
-    data
 }
 
 // --- Graph computation ---
@@ -196,7 +172,11 @@ fn build_activity(mode: &str) -> (Vec<GraphWeek>, Vec<MonthLabel>, String, Strin
         }
     };
 
-    let data = generate_mock_data(start_date, today.min(graph_end));
+    let all_days = data::load_exercise_days(Path::new("data/fit.log"));
+    let data: Vec<ExerciseDay> = all_days
+        .into_iter()
+        .filter(|d| d.date >= start_date && d.date <= today.min(graph_end))
+        .collect();
     let (weeks, month_labels, total_exercises) = build_graph(&data, today, graph_end);
 
     let header = header_text.replace("{total}", &total_exercises.to_string());
