@@ -94,10 +94,40 @@
         height: 11px;
         border-radius: 2px;
         transition: background-color 0.2s;
+        position: relative;
     }
     .activity-graph-cell:hover {
         outline: 2px solid var(--ag-hover);
         outline-offset: -1px;
+    }
+    .activity-graph-cell .ag-tooltip {
+        display: none;
+        position: absolute;
+        bottom: calc(100% + 8px);
+        left: 50%;
+        transform: translateX(-50%);
+        background: #24292f;
+        color: #ffffff;
+        padding: 6px 10px;
+        border-radius: 6px;
+        font-size: 12px;
+        line-height: 1.4;
+        white-space: nowrap;
+        z-index: 100;
+        pointer-events: none;
+        font-weight: 500;
+    }
+    .activity-graph-cell .ag-tooltip::after {
+        content: '';
+        position: absolute;
+        top: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        border: 6px solid transparent;
+        border-top-color: #24292f;
+    }
+    .activity-graph-cell:hover .ag-tooltip {
+        display: block;
     }
     .activity-graph-cell[data-level="0"] { background-color: var(--ag-level-0); }
     .activity-graph-cell[data-level="1"] { background-color: var(--ag-level-1); }
@@ -169,8 +199,8 @@
                     {% when Some with (cell) %}
                     <div class="activity-graph-cell{% if cell.is_today %} is-today{% endif %}"
                          data-level="{{ cell.level }}"
-                         data-date="{{ cell.date_str }}"
-                         title="{{ cell.count }} exercise{% if cell.count != 1 %}s{% endif %} on {{ cell.date_label }}">
+                         data-date="{{ cell.date_str }}">
+                        <span class="ag-tooltip">{{ cell.count }} exercise{% if cell.count != 1 %}s{% endif %} on {{ cell.date_label }}</span>
                     </div>
                     {% when None %}
                     <div class="activity-graph-cell-empty"></div>
