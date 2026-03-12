@@ -23,6 +23,11 @@
             color: var(--page-color);
             transition: background 0.2s, color 0.2s;
         }
+        .toolbar {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
         .theme-toggle {
             background: none;
             border: 1px solid #30363d;
@@ -31,7 +36,6 @@
             font-size: 13px;
             border-radius: 6px;
             cursor: pointer;
-            margin-bottom: 16px;
         }
         .theme-toggle:hover {
             border-color: #539bf5;
@@ -46,7 +50,10 @@
     </script>
 </head>
 <body>
-    <button class="theme-toggle" onclick="toggleTheme()">Toggle Light/Dark</button>
+    <div class="toolbar">
+        <button class="theme-toggle" onclick="toggleTheme()">Toggle Light/Dark</button>
+        {% block extra_buttons %}{% endblock %}
+    </div>
     {% block content %}{% endblock %}
 </body>
 </html>
