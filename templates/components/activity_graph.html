@@ -213,7 +213,7 @@
         <button class="ag-filter-btn{% if a.active %} active{% endif %}"
                 hx-get="/activity?mode={{ mode }}&activity={% if a.active %}{% else %}{{ a.code }}{% endif %}"
                 hx-target=".activity-graph-wrapper"
-                hx-swap="outerHTML">{{ a.emoji }}</button>
+                hx-swap="outerHTML">{{ a.emoji }} {{ a.name }}</button>
         {% endfor %}
     </div>
 </div>
