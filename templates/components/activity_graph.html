@@ -13,8 +13,6 @@
         --ag-level-3: #26a641;
         --ag-level-4: #39d353;
         --ag-future: #0d1117;
-        --ag-btn-bg: #21262d;
-        --ag-btn-active: #30363d;
     }
 
     /* Light theme */
@@ -30,8 +28,6 @@
         --ag-level-3: #30a14e;
         --ag-level-4: #216e39;
         --ag-future: #ffffff;
-        --ag-btn-bg: #f6f8fa;
-        --ag-btn-active: #e1e4e8;
     }
 
     .activity-graph-wrapper {
@@ -54,34 +50,6 @@
     .activity-graph-header {
         font-size: 14px;
         color: var(--ag-heading);
-    }
-    .activity-graph-mode-btns {
-        display: flex;
-        gap: 0;
-    }
-    .activity-graph-mode-btn {
-        background: var(--ag-btn-bg);
-        border: 1px solid var(--ag-border);
-        color: var(--ag-text);
-        padding: 4px 12px;
-        font-size: 12px;
-        cursor: pointer;
-        transition: background 0.15s;
-    }
-    .activity-graph-mode-btn:first-child {
-        border-radius: 6px 0 0 6px;
-    }
-    .activity-graph-mode-btn:last-child {
-        border-radius: 0 6px 6px 0;
-        border-left: none;
-    }
-    .activity-graph-mode-btn:hover {
-        color: var(--ag-heading);
-    }
-    .activity-graph-mode-btn.active {
-        background: var(--ag-btn-active);
-        color: var(--ag-heading);
-        font-weight: 600;
     }
     .activity-graph-container {
         display: inline-grid;
@@ -216,20 +184,6 @@
     <div class="activity-graph-header">
         {{ header_text }}
     </div>
-    <div class="activity-graph-mode-btns">
-        <button class="activity-graph-mode-btn{% if mode == "rolling" %} active{% endif %}"
-                hx-get="/activity?mode=rolling"
-                hx-target=".activity-graph-wrapper"
-                hx-swap="outerHTML">
-            Last 365 days
-        </button>
-        <button class="activity-graph-mode-btn{% if mode == "year" %} active{% endif %}"
-                hx-get="/activity?mode=year"
-                hx-target=".activity-graph-wrapper"
-                hx-swap="outerHTML">
-            This year
-        </button>
-    </div>
 </div>
 
 <div class="activity-graph-container">
@@ -287,3 +241,10 @@
     </div>
 </div>
 </div>
+<button id="mode-toggle" class="theme-toggle"
+        hx-get="/activity?mode={% if mode == "rolling" %}year{% else %}rolling{% endif %}"
+        hx-target=".activity-graph-wrapper"
+        hx-swap="outerHTML"
+        hx-swap-oob="true">
+    {% if mode == "rolling" %}Last 365 days{% else %}This year{% endif %}
+</button>
