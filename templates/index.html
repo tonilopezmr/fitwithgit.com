@@ -2,6 +2,15 @@
 
 {% block title %}Fit with Git{% endblock %}
 
+{% block extra_buttons %}
+<button id="mode-toggle" class="theme-toggle"
+        hx-get="/activity?mode={% if mode == "rolling" %}year{% else %}rolling{% endif %}"
+        hx-target=".activity-graph-wrapper"
+        hx-swap="outerHTML">
+    {% if mode == "rolling" %}Last 365 days{% else %}This year{% endif %}
+</button>
+{% endblock %}
+
 {% block content %}
 {% include "components/activity_graph.html" %}
 {% endblock %}
