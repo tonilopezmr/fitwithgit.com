@@ -1,9 +1,10 @@
 use askama::Template;
 use askama_web::WebTemplate;
-use axum::{Router, routing::get};
+use axum::{Router, extract::Query, routing::get};
 use chrono::{Datelike, Duration, NaiveDate};
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
+use serde::Deserialize;
 use tower_http::services::ServeDir;
 
 // --- Data model ---
@@ -18,7 +19,7 @@ pub struct GraphCell {
     pub count: u32,
     pub level: u8,
     pub date_label: String,
-    pub is_today: bool,
+    pub is_future: bool,
 }
 
 pub struct GraphWeek {
@@ -30,12 +31,16 @@ pub struct MonthLabel {
     pub col_start: usize,
 }
 
+#[derive(Deserialize)]
+struct ActivityQuery {
+    mode: Option<String>,
+}
+
 // --- Mock data generation ---
 
-fn generate_mock_data(end_date: NaiveDate) -> Vec<ExerciseDay> {
-    let seed = end_date.year() as u64 * 1000 + end_date.ordinal() as u64;
+fn generate_mock_data(start_date: NaiveDate, end_date: NaiveDate) -> Vec<ExerciseDay> {
+    let seed = end_date.year() as u64 * 1000 + start_date.ordinal() as u64;
     let mut rng = StdRng::seed_from_u64(seed);
-    let start_date = end_date - Duration::days(364);
     let mut data = Vec::new();
     let mut current = start_date;
     while current <= end_date {
@@ -89,9 +94,26 @@ fn month_short_name(month: u32) -> &'static str {
     }
 }
 
-fn build_graph(data: &[ExerciseDay], today: NaiveDate) -> (Vec<GraphWeek>, Vec<MonthLabel>, u32) {
+fn build_graph(
+    data: &[ExerciseDay],
+    today: NaiveDate,
+    graph_end: NaiveDate,
+) -> (Vec<GraphWeek>, Vec<MonthLabel>, u32) {
     let max_count = data.iter().map(|d| d.count).max().unwrap_or(0);
     let total_exercises: u32 = data.iter().map(|d| d.count).sum();
+
+    // Build a lookup for exercise data
+    let mut day_map: std::collections::HashMap<NaiveDate, u32> = std::collections::HashMap::new();
+    for day in data {
+        day_map.insert(day.date, day.count);
+    }
+
+    // Walk from start of data to graph_end
+    let graph_start = if data.is_empty() {
+        graph_end
+    } else {
+        data[0].date
+    };
 
     let mut weeks: Vec<GraphWeek> = Vec::new();
     let mut current_week: Vec<Option<GraphCell>> = vec![None, None, None, None, None, None, None];
@@ -99,10 +121,10 @@ fn build_graph(data: &[ExerciseDay], today: NaiveDate) -> (Vec<GraphWeek>, Vec<M
     let mut last_month: Option<u32> = None;
     let mut week_index: usize = 0;
 
-    for day in data {
-        let weekday_index = day.date.weekday().num_days_from_sunday() as usize;
+    let mut current = graph_start;
+    while current <= graph_end {
+        let weekday_index = current.weekday().num_days_from_sunday() as usize;
 
-        // Start a new week when we hit Sunday and the current week has data
         if weekday_index == 0 && current_week.iter().any(|c| c.is_some()) {
             weeks.push(GraphWeek {
                 cells: current_week,
@@ -111,8 +133,7 @@ fn build_graph(data: &[ExerciseDay], today: NaiveDate) -> (Vec<GraphWeek>, Vec<M
             week_index += 1;
         }
 
-        // Track month transitions for labels
-        let month = day.date.month();
+        let month = current.month();
         if last_month != Some(month) {
             month_labels.push(MonthLabel {
                 name: month_short_name(month).to_string(),
@@ -121,20 +142,31 @@ fn build_graph(data: &[ExerciseDay], today: NaiveDate) -> (Vec<GraphWeek>, Vec<M
             last_month = Some(month);
         }
 
-        let level = compute_level(day.count, max_count);
-        let date_label = day.date.format("%b %d, %Y").to_string();
-        let date_str = day.date.format("%Y-%m-%d").to_string();
+        let is_future = current > today;
+        let count = if is_future {
+            0
+        } else {
+            day_map.get(&current).copied().unwrap_or(0)
+        };
+        let level = if is_future {
+            0
+        } else {
+            compute_level(count, max_count)
+        };
+        let date_label = current.format("%b %d, %Y").to_string();
+        let date_str = current.format("%Y-%m-%d").to_string();
 
         current_week[weekday_index] = Some(GraphCell {
             date_str,
-            count: day.count,
+            count,
             level,
             date_label,
-            is_today: day.date == today,
+            is_future,
         });
+
+        current += Duration::days(1);
     }
 
-    // Push final partial week
     if current_week.iter().any(|c| c.is_some()) {
         weeks.push(GraphWeek {
             cells: current_week,
@@ -144,6 +176,33 @@ fn build_graph(data: &[ExerciseDay], today: NaiveDate) -> (Vec<GraphWeek>, Vec<M
     (weeks, month_labels, total_exercises)
 }
 
+fn build_activity(mode: &str) -> (Vec<GraphWeek>, Vec<MonthLabel>, String, String) {
+    let today = chrono::Local::now().date_naive();
+    let year = today.year();
+
+    let (start_date, graph_end, header_text) = match mode {
+        "year" => {
+            let jan1 = NaiveDate::from_ymd_opt(year, 1, 1).unwrap();
+            let dec31 = NaiveDate::from_ymd_opt(year, 12, 31).unwrap();
+            (jan1, dec31, format!("{} exercises in {}", "{total}", year))
+        }
+        _ => {
+            let start = today - Duration::days(364);
+            (
+                start,
+                today,
+                "{total} exercises in the last year".to_string(),
+            )
+        }
+    };
+
+    let data = generate_mock_data(start_date, today.min(graph_end));
+    let (weeks, month_labels, total_exercises) = build_graph(&data, today, graph_end);
+
+    let header = header_text.replace("{total}", &total_exercises.to_string());
+    (weeks, month_labels, header, mode.to_string())
+}
+
 // --- Templates ---
 
 #[derive(Template, WebTemplate)]
@@ -151,7 +210,8 @@ fn build_graph(data: &[ExerciseDay], today: NaiveDate) -> (Vec<GraphWeek>, Vec<M
 struct IndexTemplate {
     weeks: Vec<GraphWeek>,
     month_labels: Vec<MonthLabel>,
-    total_exercises: u32,
+    header_text: String,
+    mode: String,
 }
 
 #[derive(Template, WebTemplate)]
@@ -159,30 +219,31 @@ struct IndexTemplate {
 struct ActivityGraphTemplate {
     weeks: Vec<GraphWeek>,
     month_labels: Vec<MonthLabel>,
-    total_exercises: u32,
+    header_text: String,
+    mode: String,
 }
 
 // --- Handlers ---
 
-async fn index() -> IndexTemplate {
-    let today = chrono::Local::now().date_naive();
-    let data = generate_mock_data(today);
-    let (weeks, month_labels, total_exercises) = build_graph(&data, today);
+async fn index(query: Query<ActivityQuery>) -> IndexTemplate {
+    let mode = query.mode.as_deref().unwrap_or("rolling");
+    let (weeks, month_labels, header_text, mode) = build_activity(mode);
     IndexTemplate {
         weeks,
         month_labels,
-        total_exercises,
+        header_text,
+        mode,
     }
 }
 
-async fn activity() -> ActivityGraphTemplate {
-    let today = chrono::Local::now().date_naive();
-    let data = generate_mock_data(today);
-    let (weeks, month_labels, total_exercises) = build_graph(&data, today);
+async fn activity(query: Query<ActivityQuery>) -> ActivityGraphTemplate {
+    let mode = query.mode.as_deref().unwrap_or("rolling");
+    let (weeks, month_labels, header_text, mode) = build_activity(mode);
     ActivityGraphTemplate {
         weeks,
         month_labels,
-        total_exercises,
+        header_text,
+        mode,
     }
 }
 
