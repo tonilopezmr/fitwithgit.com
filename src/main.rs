@@ -122,15 +122,7 @@ fn build_graph(data: &[ExerciseDay], today: NaiveDate) -> (Vec<GraphWeek>, Vec<M
         }
 
         let level = compute_level(day.count, max_count);
-        let day_num = day.date.day();
-        let suffix = match (day_num % 10, day_num % 100) {
-            (1, 11) | (2, 12) | (3, 13) => "th",
-            (1, _) => "st",
-            (2, _) => "nd",
-            (3, _) => "rd",
-            _ => "th",
-        };
-        let date_label = format!("{} {}{}", day.date.format("%B"), day_num, suffix);
+        let date_label = day.date.format("%b %d, %Y").to_string();
         let date_str = day.date.format("%Y-%m-%d").to_string();
 
         current_week[weekday_index] = Some(GraphCell {
