@@ -212,6 +212,7 @@ struct IndexTemplate {
     month_labels: Vec<MonthLabel>,
     header_text: String,
     mode: String,
+    is_htmx: bool,
 }
 
 #[derive(Template, WebTemplate)]
@@ -221,6 +222,7 @@ struct ActivityGraphTemplate {
     month_labels: Vec<MonthLabel>,
     header_text: String,
     mode: String,
+    is_htmx: bool,
 }
 
 // --- Handlers ---
@@ -233,6 +235,7 @@ async fn index(query: Query<ActivityQuery>) -> IndexTemplate {
         month_labels,
         header_text,
         mode,
+        is_htmx: false,
     }
 }
 
@@ -244,6 +247,7 @@ async fn activity(query: Query<ActivityQuery>) -> ActivityGraphTemplate {
         month_labels,
         header_text,
         mode,
+        is_htmx: true,
     }
 }
 
