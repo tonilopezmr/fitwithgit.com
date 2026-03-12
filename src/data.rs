@@ -4,7 +4,7 @@ use std::path::Path;
 
 // --- Activity data model ---
 
-pub fn activity_code(activity: &Activity) -> &'static str {
+pub fn activity_code(activity: &Activity) -> &str {
     match activity {
         Activity::Steps { .. } => "S",
         Activity::Run { .. } => "R",
@@ -14,6 +14,7 @@ pub fn activity_code(activity: &Activity) -> &'static str {
         Activity::Stretch => "X",
         Activity::Ski { .. } => "K",
         Activity::Hike { .. } => "H",
+        Activity::Unknown { code } => code,
     }
 }
 
@@ -50,6 +51,9 @@ pub enum Activity {
         duration: u16,
         distance_km: f32,
         elevation_m: u32,
+    },
+    Unknown {
+        code: String,
     },
 }
 
@@ -119,7 +123,9 @@ fn parse_line(line: &str) -> Option<ActivityRecord> {
             distance_km: parts[3].parse().ok()?,
             elevation_m: parts[4].parse().ok()?,
         },
-        _ => return None,
+        code => Activity::Unknown {
+            code: code.to_string(),
+        },
     };
     Some(ActivityRecord { date, activity })
 }
@@ -138,6 +144,11 @@ pub fn load_exercise_days(path: &Path, filter: Option<&str>) -> Vec<ExerciseDay>
     for r in &records {
         if let Some(f) = filter
             && activity_code(&r.activity) != f
+        {
+            continue;
+        }
+        if let Activity::Steps { steps, goal } = &r.activity
+            && *steps < *goal
         {
             continue;
         }
@@ -198,6 +209,7 @@ pub fn format_record(record: &ActivityRecord) -> String {
             distance_km,
             elevation_m,
         } => format!("H,{d},{duration},{distance_km:.1},{elevation_m}"),
+        Activity::Unknown { code } => format!("{code},{d}"),
     }
 }
 
@@ -271,7 +283,12 @@ mod tests {
 
     #[test]
     fn test_parse_unknown_code() {
-        assert!(parse_line("Z,260312,1,2,3").is_none());
+        let r = parse_line("Z,260312,1,2,3").unwrap();
+        assert_eq!(r.date, NaiveDate::from_ymd_opt(2026, 3, 12).unwrap());
+        match &r.activity {
+            Activity::Unknown { code } => assert_eq!(code, "Z"),
+            _ => panic!("expected Unknown"),
+        }
     }
 
     #[test]
@@ -320,21 +337,22 @@ mod tests {
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join("test.log");
         let mut f = std::fs::File::create(&path).unwrap();
-        writeln!(f, "S,260312,8500,10000").unwrap();
+        writeln!(f, "S,260312,10500,10000").unwrap(); // steps >= goal, counts
         writeln!(f, "G,260312,1").unwrap();
         writeln!(f, "X,260312").unwrap();
-        writeln!(f, "S,260311,7000,10000").unwrap();
+        writeln!(f, "S,260311,7000,10000").unwrap(); // steps < goal, skipped
+        writeln!(f, "S,260311,11000,10000").unwrap(); // steps >= goal, counts
         drop(f);
 
         let days = load_exercise_days(&path, None);
         assert_eq!(days.len(), 2);
-        assert_eq!(days[0].count, 1); // 260311: 1 activity
+        assert_eq!(days[0].count, 1); // 260311: 1 activity (only goal-met steps)
         assert_eq!(days[1].count, 3); // 260312: 3 activities
 
         let filtered = load_exercise_days(&path, Some("S"));
         assert_eq!(filtered.len(), 2);
-        assert_eq!(filtered[0].count, 1); // 260311: 1 steps
-        assert_eq!(filtered[1].count, 1); // 260312: 1 steps
+        assert_eq!(filtered[0].count, 1); // 260311: 1 goal-met steps
+        assert_eq!(filtered[1].count, 1); // 260312: 1 goal-met steps
 
         let gym_only = load_exercise_days(&path, Some("G"));
         assert_eq!(gym_only.len(), 1);
