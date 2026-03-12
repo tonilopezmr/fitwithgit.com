@@ -38,6 +38,7 @@ struct ActivityQuery {
 pub struct ActivityInfo {
     pub code: String,
     pub emoji: String,
+    pub name: String,
     pub active: bool,
 }
 
@@ -51,6 +52,20 @@ fn activity_emoji(code: &str) -> &'static str {
         "X" => "\u{1F9D8}",
         "K" => "\u{26F7}\u{FE0F}",
         "H" => "\u{1F97E}",
+        _ => "",
+    }
+}
+
+fn activity_name(code: &str) -> &'static str {
+    match code {
+        "S" => "Steps",
+        "R" => "Run",
+        "W" => "Swim",
+        "B" => "Bike",
+        "G" => "Gym",
+        "X" => "Stretch",
+        "K" => "Ski",
+        "H" => "Hike",
         _ => "",
     }
 }
@@ -210,10 +225,18 @@ fn build_activity(mode: &str, activity_filter: Option<&str>) -> BuildResult {
     let header = header_text.replace("{total}", &total_exercises.to_string());
     let activities: Vec<ActivityInfo> = available
         .iter()
-        .map(|code| ActivityInfo {
-            emoji: activity_emoji(code).to_string(),
-            active: filter == Some(code.as_str()),
-            code: code.clone(),
+        .map(|code| {
+            let name = activity_name(code);
+            ActivityInfo {
+                emoji: activity_emoji(code).to_string(),
+                name: if name.is_empty() {
+                    code.clone()
+                } else {
+                    name.to_string()
+                },
+                active: filter == Some(code.as_str()),
+                code: code.clone(),
+            }
         })
         .collect();
 
