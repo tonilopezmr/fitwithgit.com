@@ -4,7 +4,7 @@
 
 {% block extra_buttons %}
 <button id="mode-toggle" class="theme-toggle"
-        hx-get="/activity?mode={% if mode == "rolling" %}year{% else %}rolling{% endif %}{% if activity_filter != "" %}&activity={{ activity_filter }}{% endif %}"
+        hx-get="{{ activity_base_url }}?mode={% if mode == "rolling" %}year{% else %}rolling{% endif %}{% if activity_filter != "" %}&activity={{ activity_filter }}{% endif %}"
         hx-target=".activity-graph-wrapper"
         hx-swap="outerHTML">
     {% if mode == "rolling" %}Last 365 days{% else %}This year{% endif %}
