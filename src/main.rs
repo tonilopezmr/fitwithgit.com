@@ -52,6 +52,8 @@ fn activity_emoji(code: &str) -> &'static str {
         "X" => "\u{1F9D8}",
         "K" => "\u{26F7}\u{FE0F}",
         "H" => "\u{1F97E}",
+        "Z" => "\u{1F319}",
+        "V" => "\u{1F49A}",
         _ => "",
     }
 }
@@ -66,6 +68,8 @@ fn activity_name(code: &str) -> &'static str {
         "X" => "Stretch",
         "K" => "Ski",
         "H" => "Hike",
+        "Z" => "Sleep",
+        "V" => "Recovery",
         _ => "",
     }
 }

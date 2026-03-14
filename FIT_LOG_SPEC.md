@@ -34,6 +34,8 @@ A compact, line-based text format for storing fitness activity data. Designed fo
 | `X`  | Stretch  | _(none — line presence means done)_ | `X,260312` |
 | `K`  | Ski      | duration_min, runs | `K,260312,180,12` |
 | `H`  | Hike     | duration_min, distance_km, elevation_m | `H,260312,95,8.4,650` |
+| `Z`  | Sleep    | duration_min, score | `Z,260312,462,85` |
+| `V`  | Recovery | recovery_pct, hrv, rhr | `V,260312,78,65,52` |
 
 ### Code Mnemonics
 
@@ -45,6 +47,8 @@ A compact, line-based text format for storing fitness activity data. Designed fo
 - `X` = stretch/e**X**tend
 - `K` = s**K**i
 - `H` = **H**ike
+- `Z` = sleep/**Z**zz
+- `V` = **V**itals/recovery
 
 ## Field Descriptions
 
@@ -95,6 +99,19 @@ No fields. The line's existence means stretching was done that day.
 | duration_min | u16 | Duration in minutes |
 | distance_km | f32 | Distance in kilometers |
 | elevation_m | u32 | Elevation gain in meters |
+
+### Sleep (`Z`)
+| Field | Type | Description |
+|-------|------|-------------|
+| duration_min | u16 | Total sleep duration in minutes (time asleep, not in bed) |
+| score | u8 | Sleep performance percentage (0–100) |
+
+### Recovery (`V`)
+| Field | Type | Description |
+|-------|------|-------------|
+| recovery_pct | u8 | Recovery percentage (0–100) |
+| hrv | u16 | Heart rate variability (RMSSD) in milliseconds |
+| rhr | u8 | Resting heart rate in bpm |
 
 ## Rules
 

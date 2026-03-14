@@ -14,6 +14,8 @@ pub fn activity_code(activity: &Activity) -> &str {
         Activity::Stretch => "X",
         Activity::Ski { .. } => "K",
         Activity::Hike { .. } => "H",
+        Activity::Sleep { .. } => "Z",
+        Activity::Recovery { .. } => "V",
         Activity::Unknown { code } => code,
     }
 }
@@ -51,6 +53,15 @@ pub enum Activity {
         duration: u16,
         distance_km: f32,
         elevation_m: u32,
+    },
+    Sleep {
+        duration: u16,
+        score: u8,
+    },
+    Recovery {
+        recovery_pct: u8,
+        hrv: u16,
+        rhr: u8,
     },
     Unknown {
         code: String,
@@ -122,6 +133,15 @@ fn parse_line(line: &str) -> Option<ActivityRecord> {
             duration: parts[2].parse().ok()?,
             distance_km: parts[3].parse().ok()?,
             elevation_m: parts[4].parse().ok()?,
+        },
+        "Z" if parts.len() >= 4 => Activity::Sleep {
+            duration: parts[2].parse().ok()?,
+            score: parts[3].parse().ok()?,
+        },
+        "V" if parts.len() >= 5 => Activity::Recovery {
+            recovery_pct: parts[2].parse().ok()?,
+            hrv: parts[3].parse().ok()?,
+            rhr: parts[4].parse().ok()?,
         },
         code => Activity::Unknown {
             code: code.to_string(),
@@ -230,6 +250,12 @@ pub fn format_record(record: &ActivityRecord) -> String {
             distance_km,
             elevation_m,
         } => format!("H,{d},{duration},{distance_km:.1},{elevation_m}"),
+        Activity::Sleep { duration, score } => format!("Z,{d},{duration},{score}"),
+        Activity::Recovery {
+            recovery_pct,
+            hrv,
+            rhr,
+        } => format!("V,{d},{recovery_pct},{hrv},{rhr}"),
         Activity::Unknown { code } => format!("{code},{d}"),
     }
 }
@@ -304,11 +330,42 @@ mod tests {
 
     #[test]
     fn test_parse_unknown_code() {
-        let r = parse_line("Z,260312,1,2,3").unwrap();
+        let r = parse_line("Q,260312,1,2,3").unwrap();
         assert_eq!(r.date, NaiveDate::from_ymd_opt(2026, 3, 12).unwrap());
         match &r.activity {
-            Activity::Unknown { code } => assert_eq!(code, "Z"),
+            Activity::Unknown { code } => assert_eq!(code, "Q"),
             _ => panic!("expected Unknown"),
+        }
+    }
+
+    #[test]
+    fn test_parse_sleep() {
+        let r = parse_line("Z,260312,462,85").unwrap();
+        assert_eq!(r.date, NaiveDate::from_ymd_opt(2026, 3, 12).unwrap());
+        match r.activity {
+            Activity::Sleep { duration, score } => {
+                assert_eq!(duration, 462);
+                assert_eq!(score, 85);
+            }
+            _ => panic!("expected Sleep"),
+        }
+    }
+
+    #[test]
+    fn test_parse_recovery() {
+        let r = parse_line("V,260312,78,65,52").unwrap();
+        assert_eq!(r.date, NaiveDate::from_ymd_opt(2026, 3, 12).unwrap());
+        match r.activity {
+            Activity::Recovery {
+                recovery_pct,
+                hrv,
+                rhr,
+            } => {
+                assert_eq!(recovery_pct, 78);
+                assert_eq!(hrv, 65);
+                assert_eq!(rhr, 52);
+            }
+            _ => panic!("expected Recovery"),
         }
     }
 
