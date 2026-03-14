@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block title %}{{ owner }}/{{ repo }} - Fit with Git{% endblock %}
+
+{% block extra_buttons %}
+{% match error %}
+{% when None %}
+<button id="mode-toggle" class="theme-toggle"
+        hx-get="{{ activity_base_url }}?mode={% if mode == "rolling" %}year{% else %}rolling{% endif %}{% if activity_filter != "" %}&activity={{ activity_filter }}{% endif %}"
+        hx-target=".activity-graph-wrapper"
+        hx-swap="outerHTML">
+    {% if mode == "rolling" %}Last 365 days{% else %}This year{% endif %}
+</button>
+{% when Some with (_msg) %}
+{% endmatch %}
+{% endblock %}
+
+{% block content %}
+{% match error %}
+    {% when Some with (msg) %}
+    <div style="text-align: center; margin-top: 80px;">
+        <h2 style="margin-bottom: 8px;">{{ owner }}/{{ repo }}</h2>
+        <p style="color: var(--page-color); opacity: 0.7; font-size: 16px; margin-bottom: 24px;">{{ msg }}</p>
+        <p style="color: var(--page-color); opacity: 0.5; font-size: 14px;">
+            To get started, add a <code>fit.log</code> file to the root of your repository.
+        </p>
+    </div>
+    {% when None %}
+    <h2 style="margin-bottom: 16px;">
+        <a href="https://github.com/{{ owner }}/{{ repo }}"
+           style="color: var(--page-color); text-decoration: none;">
+            {{ owner }}/{{ repo }}
+        </a>
+    </h2>
+    {% include "components/activity_graph.html" %}
+{% endmatch %}
+{% endblock %}
