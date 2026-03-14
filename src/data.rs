@@ -130,18 +130,22 @@ fn parse_line(line: &str) -> Option<ActivityRecord> {
     Some(ActivityRecord { date, activity })
 }
 
+pub fn parse_content(content: &str) -> Vec<ActivityRecord> {
+    content.lines().filter_map(parse_line).collect()
+}
+
+#[allow(dead_code)]
 pub fn parse_file(path: &Path) -> Vec<ActivityRecord> {
     let content = match std::fs::read_to_string(path) {
         Ok(c) => c,
         Err(_) => return Vec::new(),
     };
-    content.lines().filter_map(parse_line).collect()
+    parse_content(&content)
 }
 
-pub fn load_exercise_days(path: &Path, filter: Option<&str>) -> Vec<ExerciseDay> {
-    let records = parse_file(path);
+fn aggregate_exercise_days(records: &[ActivityRecord], filter: Option<&str>) -> Vec<ExerciseDay> {
     let mut counts: BTreeMap<NaiveDate, u32> = BTreeMap::new();
-    for r in &records {
+    for r in records {
         if let Some(f) = filter
             && activity_code(&r.activity) != f
         {
@@ -160,13 +164,30 @@ pub fn load_exercise_days(path: &Path, filter: Option<&str>) -> Vec<ExerciseDay>
         .collect()
 }
 
-pub fn get_available_activities(path: &Path) -> Vec<String> {
-    let records = parse_file(path);
+fn collect_activity_codes(records: &[ActivityRecord]) -> Vec<String> {
     let mut seen = std::collections::BTreeSet::new();
-    for r in &records {
+    for r in records {
         seen.insert(activity_code(&r.activity).to_string());
     }
     seen.into_iter().collect()
+}
+
+#[allow(dead_code)]
+pub fn load_exercise_days(path: &Path, filter: Option<&str>) -> Vec<ExerciseDay> {
+    aggregate_exercise_days(&parse_file(path), filter)
+}
+
+#[allow(dead_code)]
+pub fn get_available_activities(path: &Path) -> Vec<String> {
+    collect_activity_codes(&parse_file(path))
+}
+
+pub fn load_exercise_days_from_content(content: &str, filter: Option<&str>) -> Vec<ExerciseDay> {
+    aggregate_exercise_days(&parse_content(content), filter)
+}
+
+pub fn get_available_activities_from_content(content: &str) -> Vec<String> {
+    collect_activity_codes(&parse_content(content))
 }
 
 // --- Serialization ---
