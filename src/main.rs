@@ -2,10 +2,10 @@ mod data;
 
 use askama::Template;
 use askama_web::WebTemplate;
-use axum::{Router, extract::Query, routing::get};
+use axum::http::StatusCode;
+use axum::{Router, extract::Path as AxumPath, extract::Query, routing::get};
 use chrono::{Datelike, Duration, NaiveDate};
 use serde::Deserialize;
-use std::path::Path;
 use tower_http::services::ServeDir;
 
 // --- Data model ---
@@ -191,10 +191,13 @@ struct BuildResult {
     activities: Vec<ActivityInfo>,
 }
 
-fn build_activity(mode: &str, activity_filter: Option<&str>) -> BuildResult {
+fn build_activity_from_content(
+    mode: &str,
+    activity_filter: Option<&str>,
+    content: &str,
+) -> BuildResult {
     let today = chrono::Local::now().date_naive();
     let year = today.year();
-    let path = Path::new("fit.log");
 
     let (start_date, graph_end, header_text) = match mode {
         "year" => {
@@ -212,10 +215,10 @@ fn build_activity(mode: &str, activity_filter: Option<&str>) -> BuildResult {
         }
     };
 
-    let available = data::get_available_activities(path);
+    let available = data::get_available_activities_from_content(content);
     let filter = activity_filter.filter(|f| available.contains(&f.to_string()));
 
-    let all_days = data::load_exercise_days(path, filter);
+    let all_days = data::load_exercise_days_from_content(content, filter);
     let data: Vec<ExerciseDay> = all_days
         .into_iter()
         .filter(|d| d.date >= start_date && d.date <= today.min(graph_end))
@@ -250,6 +253,11 @@ fn build_activity(mode: &str, activity_filter: Option<&str>) -> BuildResult {
     }
 }
 
+fn build_activity(mode: &str, activity_filter: Option<&str>) -> BuildResult {
+    let content = std::fs::read_to_string("fit.log").unwrap_or_default();
+    build_activity_from_content(mode, activity_filter, &content)
+}
+
 // --- Templates ---
 
 #[derive(Template, WebTemplate)]
@@ -262,6 +270,7 @@ struct IndexTemplate {
     is_htmx: bool,
     activity_filter: String,
     activities: Vec<ActivityInfo>,
+    activity_base_url: String,
 }
 
 #[derive(Template, WebTemplate)]
@@ -274,6 +283,7 @@ struct ActivityGraphTemplate {
     is_htmx: bool,
     activity_filter: String,
     activities: Vec<ActivityInfo>,
+    activity_base_url: String,
 }
 
 // --- Handlers ---
@@ -289,6 +299,7 @@ async fn index(query: Query<ActivityQuery>) -> IndexTemplate {
         is_htmx: false,
         activity_filter: r.activity_filter,
         activities: r.activities,
+        activity_base_url: "/activity".to_string(),
     }
 }
 
@@ -303,6 +314,144 @@ async fn activity(query: Query<ActivityQuery>) -> ActivityGraphTemplate {
         is_htmx: true,
         activity_filter: r.activity_filter,
         activities: r.activities,
+        activity_base_url: "/activity".to_string(),
+    }
+}
+
+#[derive(Template, WebTemplate)]
+#[template(path = "repo.html")]
+struct RepoTemplate {
+    owner: String,
+    repo: String,
+    error: Option<String>,
+    weeks: Vec<GraphWeek>,
+    month_labels: Vec<MonthLabel>,
+    header_text: String,
+    mode: String,
+    is_htmx: bool,
+    activity_filter: String,
+    activities: Vec<ActivityInfo>,
+    activity_base_url: String,
+}
+
+fn is_valid_github_name(s: &str) -> bool {
+    !s.is_empty()
+        && s.len() <= 100
+        && s.chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_' || c == '.')
+}
+
+async fn check_repo_exists(owner: &str, repo: &str) -> Result<bool, String> {
+    let url = format!("https://api.github.com/repos/{owner}/{repo}");
+    let client = reqwest::Client::new();
+    let response = client
+        .get(&url)
+        .header("User-Agent", "fitwithgit")
+        .send()
+        .await
+        .map_err(|e| format!("Failed to check repository: {e}"))?;
+    Ok(response.status().is_success())
+}
+
+async fn fetch_fit_log(owner: &str, repo: &str) -> Result<String, String> {
+    let url = format!("https://raw.githubusercontent.com/{owner}/{repo}/main/fit.log");
+    let response = reqwest::get(&url)
+        .await
+        .map_err(|e| format!("Failed to fetch fit.log: {e}"))?;
+
+    if response.status() == StatusCode::NOT_FOUND {
+        let repo_public = check_repo_exists(owner, repo).await.unwrap_or(false);
+        if repo_public {
+            return Err("This repository doesn't have a fit.log file.".to_string());
+        }
+        return Err(
+            "Repository not found. If this is a private repository, Fit with Git only works with public repositories."
+                .to_string(),
+        );
+    }
+    if !response.status().is_success() {
+        return Err(format!("GitHub returned status {}", response.status()));
+    }
+
+    response
+        .text()
+        .await
+        .map_err(|e| format!("Failed to read response: {e}"))
+}
+
+async fn repo_graph(
+    AxumPath((owner, repo)): AxumPath<(String, String)>,
+    query: Query<ActivityQuery>,
+) -> RepoTemplate {
+    if !is_valid_github_name(&owner) || !is_valid_github_name(&repo) {
+        return RepoTemplate {
+            owner,
+            repo,
+            error: Some("Invalid repository path.".to_string()),
+            weeks: vec![],
+            month_labels: vec![],
+            header_text: String::new(),
+            mode: String::new(),
+            is_htmx: false,
+            activity_filter: String::new(),
+            activities: vec![],
+            activity_base_url: String::new(),
+        };
+    }
+
+    let base_url = format!("/{owner}/{repo}/activity");
+
+    match fetch_fit_log(&owner, &repo).await {
+        Ok(content) => {
+            let mode = query.mode.as_deref().unwrap_or("year");
+            let r = build_activity_from_content(mode, query.activity.as_deref(), &content);
+            RepoTemplate {
+                owner,
+                repo,
+                error: None,
+                weeks: r.weeks,
+                month_labels: r.month_labels,
+                header_text: r.header_text,
+                mode: r.mode,
+                is_htmx: false,
+                activity_filter: r.activity_filter,
+                activities: r.activities,
+                activity_base_url: base_url,
+            }
+        }
+        Err(e) => RepoTemplate {
+            owner,
+            repo,
+            error: Some(e),
+            weeks: vec![],
+            month_labels: vec![],
+            header_text: String::new(),
+            mode: String::new(),
+            is_htmx: false,
+            activity_filter: String::new(),
+            activities: vec![],
+            activity_base_url: base_url,
+        },
+    }
+}
+
+async fn repo_activity(
+    AxumPath((owner, repo)): AxumPath<(String, String)>,
+    query: Query<ActivityQuery>,
+) -> ActivityGraphTemplate {
+    let base_url = format!("/{owner}/{repo}/activity");
+    let content = fetch_fit_log(&owner, &repo).await.unwrap_or_default();
+    let mode = query.mode.as_deref().unwrap_or("year");
+    let r = build_activity_from_content(mode, query.activity.as_deref(), &content);
+    ActivityGraphTemplate {
+        weeks: r.weeks,
+        month_labels: r.month_labels,
+        header_text: r.header_text,
+        mode: r.mode,
+        is_htmx: true,
+        activity_filter: r.activity_filter,
+        activities: r.activities,
+        activity_base_url: base_url,
     }
 }
 
@@ -313,6 +462,8 @@ async fn main() {
     let app = Router::new()
         .route("/", get(index))
         .route("/activity", get(activity))
+        .route("/{owner}/{repo}", get(repo_graph))
+        .route("/{owner}/{repo}/activity", get(repo_activity))
         .nest_service("/static", ServeDir::new("static"));
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000")
