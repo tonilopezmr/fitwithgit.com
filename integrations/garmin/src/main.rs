@@ -87,7 +87,7 @@ async fn main() {
     let end = args.until.unwrap_or(today);
 
     if start > end {
-        println!("Nothing to sync: start date ({start}) is after end date ({end}).");
+        println!("Already up to date.");
         return;
     }
 
