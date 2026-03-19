@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "fit": {
+      "command": "cargo",
+      "args": ["run", "--manifest-path", "integrations/mcp/Cargo.toml"],
+      "env": {
+        "FIT_LOG_PATH": "./fit.log"
+      }
+    }
+  }
+}
