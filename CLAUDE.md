@@ -34,7 +34,6 @@ cargo build --release          # Build optimized release binary
 
 ### Available Skills
 
-The following Claude Code skills are available in this environment for code review:
-
+- **fit-tracker** — Track fitness data via the fit MCP server: log workouts, sync from Garmin/Whoop, query exercise history, get summaries
 - **web-design-guidelines** — Review UI code for Web Interface Guidelines compliance, accessibility audits, and UX best practices
 - **vercel-react-best-practices** — React/Next.js performance optimization (useful if frontend is migrated to React in the future)
