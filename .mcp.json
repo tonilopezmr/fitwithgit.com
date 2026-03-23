@@ -4,7 +4,9 @@
       "command": "cargo",
       "args": ["run", "--manifest-path", "integrations/mcp/Cargo.toml"],
       "env": {
-        "FIT_LOG_PATH": "./fit.log"
+        "FIT_LOG_PATH": "./fit.log",
+        "GARMIN_SYNC_BIN": "./integrations/garmin/run-sync.sh",
+        "WHOOP_SYNC_BIN": "./integrations/whoop/run-sync.sh"
       }
     }
   }
