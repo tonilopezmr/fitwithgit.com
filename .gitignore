@@ -2,3 +2,5 @@ target/
 .env
 .garmin_session*
 .whoop_tokens.json
+
+.DS_Store
